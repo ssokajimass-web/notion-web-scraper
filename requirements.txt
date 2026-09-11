@@ -1,0 +1,9 @@
+notion-client>=2.2.1
+trafilatura>=2.0.0
+beautifulsoup4>=4.12.3
+lxml>=5.2.0
+ddgs>=9.16.0
+requests>=2.32.0
+python-dotenv>=1.0.1
+streamlit>=1.35.0
+rich>=13.7.0

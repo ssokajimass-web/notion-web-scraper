@@ -1,0 +1,27 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+keys.txt
+schema*.txt
+test_trans.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Binaries and local testing
+cloudflared.exe
+*.bat
+test_*.py
+test_pw.png
+
+# OS metadata
+.DS_Store
+Thumbs.db
