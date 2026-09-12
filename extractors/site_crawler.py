@@ -167,12 +167,19 @@ def crawl_site(
             logger.warning(f"リンク探索エラー [{current_url}]: {e}")
 
         # 4. 本文抽出判定
-        # ページネーション一覧ページなどでなく、記事本文があるかチェック
+        # ページネーション一覧ページやメニューばかりのページを除外
         extracted = extract_article(current_url, html=html)
-        if extracted and len(extracted.content.strip()) >= 100:
-            # メニューやリンク一覧だけのページを除外
-            extracted.category = "サイト記事"
-            processed_count += 1
-            yield extracted
+        if extracted and len(extracted.content.strip()) >= 120:
+            # リンクテキスト密度チェック（リンク文字が全体の60%以上なら一覧ページとみなす）
+            link_text_len = sum(len(a.get_text().strip()) for a in soup.find_all("a"))
+            total_text_len = len(soup.get_text().strip()) or 1
+            is_index_page = (link_text_len / total_text_len) > 0.55
+
+            # 一覧ページではなく、まとまった本文がある場合のみ記事として採用
+            if not is_index_page or len(extracted.content.strip()) >= 500:
+                extracted.category = "サイト記事"
+                processed_count += 1
+                yield extracted
+
 
         time.sleep(delay)

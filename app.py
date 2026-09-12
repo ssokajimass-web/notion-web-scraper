@@ -1,6 +1,7 @@
 import streamlit as st
 import time
 import os
+import re
 from pathlib import Path
 from dotenv import load_dotenv, set_key
 
@@ -338,19 +339,25 @@ with tab_site:
                     pct = min(1.0, count / (site_limit if site_limit > 0 else max(100, count + 10)))
                     progress_bar.progress(pct, text=f"処理中 ({count}件目): {item.title[:30]}")
 
+                    # タイトルからページネーション（Page 2, (2) 等）を除いたベースタイトルでグルーピング
+                    base_title = re.sub(r"\s*-\s*Page\s*\d+.*$", "", item.title, flags=re.I)
+                    base_title = re.sub(r"\s*\(Page\s*\d+\).*$", "", base_title, flags=re.I)
+                    base_title = re.sub(r"\s*\|\s*Page\s*\d+.*$", "", base_title, flags=re.I)
+                    base_title = base_title.strip() or item.title.strip()
+
                     if not dry_run and notion:
-                        if item.title in saved_titles:
-                            page_id = saved_titles[item.title]
-                            combined_content = f"\n\n--- 次のページ ({item.url}) ---\n\n" + item.content
+                        if base_title in saved_titles:
+                            page_id = saved_titles[base_title]
+                            combined_content = f"\n\n## 続き ({item.url})\n\n" + item.content
                             ok, msg = notion.update_page_result(
                                 page_id=page_id,
                                 content=combined_content,
                                 status="完了"
                             )
-                            save_status = "結合済" if ok else f"結合失敗: {msg}"
+                            save_status = "既存ページに追記済" if ok else f"追記失敗: {msg}"
                         else:
                             ok, msg, page_id = notion.save_item(
-                                title=item.title,
+                                title=base_title,
                                 url=item.url,
                                 content=item.content,
                                 item_type="サイト記事",
@@ -359,7 +366,7 @@ with tab_site:
                                 summary=item.summary
                             )
                             if ok and page_id:
-                                saved_titles[item.title] = page_id
+                                saved_titles[base_title] = page_id
                             save_status = "保存済" if ok else f"保存失敗: {msg}"
                     else:
                         save_status = "プレビュー"

@@ -70,7 +70,9 @@ class NotionSync:
             "URL": {"url": {}},
             "サイトURL": {"url": {}},
             "検索クエリ": {"rich_text": {}},
-            "要約・解説": {"rich_text": {}}
+            "要約・解説": {"rich_text": {}},
+            "作成日時": {"created_time": {}},
+            "更新日時": {"last_edited_time": {}}
         }
 
         try:
@@ -178,31 +180,79 @@ class NotionSync:
         """記事本文や名言情報からNotionのブロックツリー（children）を構築する"""
         blocks = []
 
-        # 本文ブロック（段落ごと または コードブロック）
-        chunks = self._split_text_to_chunks(content)
-        for chunk in chunks:
-            if quote_info:
-                # 名言の場合は本文は空にする要望があったため、基本的にはスキップされるが
-                # 万が一本文が残っている場合は通常のパラグラフ
+        # 名言の場合は本文は空または短文パラグラフ
+        if quote_info:
+            return blocks
+
+        # 記事本文を段落ごとに処理して通常のパラグラフおよび見出しブロックに変換
+        lines = content.split("\n")
+        current_paragraph = []
+
+        def flush_paragraph():
+            if current_paragraph:
+                text = " ".join(current_paragraph).strip()
+                if text:
+                    for chunk in self._split_text_to_chunks(text):
+                        blocks.append({
+                            "object": "block",
+                            "type": "paragraph",
+                            "paragraph": {
+                                "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                            }
+                        })
+                current_paragraph.clear()
+
+        for line in lines:
+            stripped = line.strip()
+            if not stripped:
+                flush_paragraph()
+                continue
+
+            # 見出し記法
+            if stripped.startswith("### "):
+                flush_paragraph()
                 blocks.append({
                     "object": "block",
-                    "type": "paragraph",
-                    "paragraph": {
-                        "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                    "type": "heading_3",
+                    "heading_3": {
+                        "rich_text": [{"type": "text", "text": {"content": stripped[4:].strip()[:2000]}}]
+                    }
+                })
+            elif stripped.startswith("## "):
+                flush_paragraph()
+                blocks.append({
+                    "object": "block",
+                    "type": "heading_2",
+                    "heading_2": {
+                        "rich_text": [{"type": "text", "text": {"content": stripped[3:].strip()[:2000]}}]
+                    }
+                })
+            elif stripped.startswith("# "):
+                flush_paragraph()
+                blocks.append({
+                    "object": "block",
+                    "type": "heading_1",
+                    "heading_1": {
+                        "rich_text": [{"type": "text", "text": {"content": stripped[2:].strip()[:2000]}}]
+                    }
+                })
+            elif stripped.startswith("- ") or stripped.startswith("* "):
+                flush_paragraph()
+                blocks.append({
+                    "object": "block",
+                    "type": "bulleted_list_item",
+                    "bulleted_list_item": {
+                        "rich_text": [{"type": "text", "text": {"content": stripped[2:].strip()[:2000]}}]
                     }
                 })
             else:
-                # 名言以外（記事、検索など）の場合はコードブロックに入れる
-                blocks.append({
-                    "object": "block",
-                    "type": "code",
-                    "code": {
-                        "rich_text": [{"type": "text", "text": {"content": chunk}}],
-                        "language": "plain text"
-                    }
-                })
+                current_paragraph.append(stripped)
 
-        return blocks
+        flush_paragraph()
+
+        # Notionの1リクエストあたり最大100ブロック制限を考慮
+        return blocks[:95]
+
 
     def save_item(
         self,
@@ -378,11 +428,15 @@ class NotionSync:
                         ]
                     }
 
-            query_kwargs = {"database_id": self.database_id}
+            body = {}
             if query_filter:
-                query_kwargs["filter"] = query_filter
+                body["filter"] = query_filter
 
-            response = self.client.databases.query(**query_kwargs)
+            response = self.client.request(
+                path=f"databases/{self.database_id}/query",
+                method="POST",
+                body=body
+            )
             results = response.get("results", [])
 
             for page in results:
