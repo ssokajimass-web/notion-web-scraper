@@ -45,8 +45,10 @@ st.markdown("""
         font-size: 1.1rem !important;
     }
     
-    /* ボタン（白黒モノトーン） */
-    .stButton > button {
+    /* ボタン（すべてのボタンを白背景・黒文字・グレー枠線に統一） */
+    .stButton > button,
+    .stButton > button[kind="primary"],
+    .stButton > button[kind="secondary"] {
         background-color: #ffffff !important;
         color: #222222 !important;
         border: 1px solid #cccccc !important;
@@ -54,21 +56,30 @@ st.markdown("""
         box-shadow: none !important;
         font-weight: 400 !important;
     }
-    .stButton > button:hover {
-        background-color: #f0f0f0 !important;
+    .stButton > button *,
+    .stButton > button[kind="primary"] *,
+    .stButton > button[kind="secondary"] * {
+        color: #222222 !important;
+    }
+    .stButton > button:hover,
+    .stButton > button[kind="primary"]:hover,
+    .stButton > button[kind="secondary"]:hover {
+        background-color: #f7f7f7 !important;
         border-color: #999999 !important;
         color: #000000 !important;
     }
-    .stButton > button[kind="primary"] {
-        background-color: #222222 !important;
-        color: #ffffff !important;
-        border: 1px solid #222222 !important;
+    .stButton > button:hover *,
+    .stButton > button[kind="primary"]:hover *,
+    .stButton > button[kind="secondary"]:hover * {
+        color: #000000 !important;
     }
-    .stButton > button[kind="primary"]:hover {
-        background-color: #444444 !important;
-        border-color: #444444 !important;
-        color: #ffffff !important;
+    .stButton > button:focus,
+    .stButton > button[kind="primary"]:focus,
+    .stButton > button[kind="secondary"]:focus {
+        border-color: #888888 !important;
+        box-shadow: none !important;
     }
+
 
     /* タブ */
     .stTabs [data-baseweb="tab-list"] {
@@ -220,7 +231,7 @@ with tab_queue:
 
     col_q_btn, col_q_refresh = st.columns([2, 1])
     with col_q_btn:
-        run_queue_btn = st.button("未処理タスクを実行", type="primary", use_container_width=True)
+        run_queue_btn = st.button("未処理タスクを実行", use_container_width=True)
     with col_q_refresh:
         check_tasks_btn = st.button("件数確認", use_container_width=True)
 
@@ -308,7 +319,7 @@ with tab_site:
         unlimited_site = st.checkbox("上限なし（全記事）", value=False)
         site_limit = 0 if unlimited_site else st.number_input("取得上限数", min_value=1, max_value=2000, value=50, step=10)
 
-    if st.button("実行", type="primary", key="btn_site"):
+    if st.button("実行", key="btn_site"):
         if not site_url:
             st.warning("URLを入力してください。")
         elif not dry_run and (not config.NOTION_API_KEY or not config.NOTION_DATABASE_ID):
@@ -384,7 +395,7 @@ with tab_search:
         help="経歴、思想、インタビューなどの派生クエリを含めて検索します。"
     )
 
-    if st.button("実行", type="primary", key="btn_search"):
+    if st.button("実行", key="btn_search"):
         if not search_query:
             st.warning("検索キーワードを入力してください。")
         elif not dry_run and (not config.NOTION_API_KEY or not config.NOTION_DATABASE_ID):
@@ -448,7 +459,7 @@ with tab_quotes:
         help="チェックを外すと指定した単一ページのみ取得します。"
     )
 
-    if st.button("実行", type="primary", key="btn_quotes"):
+    if st.button("実行", key="btn_quotes"):
         if not quotes_url:
             st.warning("URLを入力してください。")
         elif not dry_run and (not config.NOTION_API_KEY or not config.NOTION_DATABASE_ID):
